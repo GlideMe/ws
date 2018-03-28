@@ -5,6 +5,7 @@ const crypto = require('crypto');
 
 const PerMessageDeflate = require('../lib/PerMessageDeflate');
 const Receiver = require('../lib/Receiver');
+const Sender = require('../lib/Sender');
 const util = require('./hybi-util');
 
 describe('Receiver', function () {
@@ -825,6 +826,86 @@ describe('Receiver', function () {
         assert.strictEqual(p.onmessage, null);
         done();
       });
+    });
+  });
+
+  it('can emit nodebuffer of fragmented binary message', function (done) {
+    const p = new Receiver();
+    const frags = [
+      crypto.randomBytes(7321),
+      crypto.randomBytes(137),
+      crypto.randomBytes(285787),
+      crypto.randomBytes(3)
+    ];
+
+    p.binaryType = 'nodebuffer';
+    p.onmessage = (data) => {
+      assert.ok(Buffer.isBuffer(data));
+      assert.ok(data.equals(Buffer.concat(frags)));
+      done();
+    };
+
+    frags.forEach((frag, i) => {
+      Sender.frame(frag, {
+        fin: i === frags.length - 1,
+        opcode: i === 0 ? 2 : 0,
+        readOnly: true,
+        mask: false,
+        rsv1: false
+      }).forEach((buf) => p.add(buf));
+    });
+  });
+
+  it('can emit arraybuffer of fragmented binary message', function (done) {
+    const p = new Receiver();
+    const frags = [
+      crypto.randomBytes(19221),
+      crypto.randomBytes(954),
+      crypto.randomBytes(623987)
+    ];
+
+    p.binaryType = 'arraybuffer';
+    p.onmessage = (data) => {
+      assert.ok(data instanceof ArrayBuffer);
+      assert.ok(Buffer.from(data).equals(Buffer.concat(frags)));
+      done();
+    };
+
+    frags.forEach((frag, i) => {
+      Sender.frame(frag, {
+        fin: i === frags.length - 1,
+        opcode: i === 0 ? 2 : 0,
+        readOnly: true,
+        mask: false,
+        rsv1: false
+      }).forEach((buf) => p.add(buf));
+    });
+  });
+
+  it('can emit fragments of fragmented binary message', function (done) {
+    const p = new Receiver();
+    const frags = [
+      crypto.randomBytes(17),
+      crypto.randomBytes(419872),
+      crypto.randomBytes(83),
+      crypto.randomBytes(9928),
+      crypto.randomBytes(1)
+    ];
+
+    p.binaryType = 'fragments';
+    p.onmessage = (data) => {
+      assert.deepStrictEqual(data, frags);
+      done();
+    };
+
+    frags.forEach((frag, i) => {
+      Sender.frame(frag, {
+        fin: i === frags.length - 1,
+        opcode: i === 0 ? 2 : 0,
+        readOnly: true,
+        mask: false,
+        rsv1: false
+      }).forEach((buf) => p.add(buf));
     });
   });
 });

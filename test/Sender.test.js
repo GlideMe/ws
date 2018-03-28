@@ -6,12 +6,11 @@ const PerMessageDeflate = require('../lib/PerMessageDeflate');
 const Sender = require('../lib/Sender');
 
 describe('Sender', function () {
-  describe('#frameAndSend', function () {
-    it('does not modify a masked binary buffer', function () {
-      const sender = new Sender({ write: () => {} });
+  describe('.frame', function () {
+    it('does not mutate the input buffer if data is `readOnly`', function () {
       const buf = Buffer.from([1, 2, 3, 4, 5]);
 
-      sender.frameAndSend(buf, {
+      Sender.frame(buf, {
         readOnly: true,
         rsv1: false,
         mask: true,
@@ -22,36 +21,16 @@ describe('Sender', function () {
       assert.ok(buf.equals(Buffer.from([1, 2, 3, 4, 5])));
     });
 
-    it('does not modify a masked text buffer', function () {
-      const sender = new Sender({ write: () => {} });
-      const text = Buffer.from('hi there');
-
-      sender.frameAndSend(text, {
-        readOnly: true,
-        rsv1: false,
-        mask: true,
-        opcode: 1,
-        fin: true
-      });
-
-      assert.ok(text.equals(Buffer.from('hi there')));
-    });
-
-    it('sets RSV1 bit if compressed', function (done) {
-      const sender = new Sender({
-        write: (data) => {
-          assert.strictEqual(data[0] & 0x40, 0x40);
-          done();
-        }
-      });
-
-      sender.frameAndSend(Buffer.from('hi'), {
+    it('sets RSV1 bit if compressed', function () {
+      const list = Sender.frame(Buffer.from('hi'), {
         readOnly: false,
         mask: false,
         rsv1: true,
         opcode: 1,
         fin: true
       });
+
+      assert.strictEqual(list[0][0] & 0x40, 0x40);
     });
   });
 
@@ -178,30 +157,6 @@ describe('Sender', function () {
       sender.send('123', { compress: true, fin: true });
     });
 
-    it('compresses null as first fragment', function (done) {
-      const fragments = [];
-      const perMessageDeflate = new PerMessageDeflate({ threshold: 0 });
-      const sender = new Sender({
-        write: (data) => {
-          fragments.push(data);
-          if (fragments.length !== 2) return;
-
-          assert.strictEqual(fragments[0][0] & 0x40, 0x40);
-          assert.strictEqual(fragments[0].length, 3);
-          assert.strictEqual(fragments[1][0] & 0x40, 0x00);
-          assert.strictEqual(fragments[1].length, 8);
-          done();
-        }
-      }, {
-        'permessage-deflate': perMessageDeflate
-      });
-
-      perMessageDeflate.accept([{}]);
-
-      sender.send(null, { compress: true, fin: false });
-      sender.send('data', { compress: true, fin: true });
-    });
-
     it('compresses empty buffer as first fragment', function (done) {
       const fragments = [];
       const perMessageDeflate = new PerMessageDeflate({ threshold: 0 });
@@ -224,30 +179,6 @@ describe('Sender', function () {
 
       sender.send(Buffer.alloc(0), { compress: true, fin: false });
       sender.send('data', { compress: true, fin: true });
-    });
-
-    it('compresses null last fragment', function (done) {
-      const fragments = [];
-      const perMessageDeflate = new PerMessageDeflate({ threshold: 0 });
-      const sender = new Sender({
-        write: (data) => {
-          fragments.push(data);
-          if (fragments.length !== 2) return;
-
-          assert.strictEqual(fragments[0][0] & 0x40, 0x40);
-          assert.strictEqual(fragments[0].length, 12);
-          assert.strictEqual(fragments[1][0] & 0x40, 0x00);
-          assert.strictEqual(fragments[1].length, 3);
-          done();
-        }
-      }, {
-        'permessage-deflate': perMessageDeflate
-      });
-
-      perMessageDeflate.accept([{}]);
-
-      sender.send('data', { compress: true, fin: false });
-      sender.send(null, { compress: true, fin: true });
     });
 
     it('compresses empty buffer as last fragment', function (done) {
