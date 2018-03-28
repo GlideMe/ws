@@ -136,7 +136,7 @@ when the HTTP server is passed via the `server` option, this method is called
 automatically. When operating in "noServer" mode, this method must be called
 manually.
 
-If the upgrade is successfull, the `callback` is called with a `WebSocket`
+If the upgrade is successful, the `callback` is called with a `WebSocket`
 object as parameter.
 
 ### server.shouldHandle(request)
@@ -149,7 +149,7 @@ against the `path` option if provided.
 The return value, `true` or `false`, determines whether or not to accept the
 handshake.
 
-This method can be overriden when a custom handling logic is required.
+This method can be overridden when a custom handling logic is required.
 
 ## Class: WebSocket
 
@@ -170,6 +170,7 @@ This class represents a WebSocket. It extends the `EventEmitter`.
 - `protocols` {String|Array} The list of subprotocols.
 - `options` {Object}
   - `protocol` {String} Value of the `Sec-WebSocket-Protocol` header.
+  - `handshakeTimeout` {Number} Timeout in milliseconds for the handshake request.
   - `perMessageDeflate` {Boolean|Object} Enable/disable permessage-deflate.
   - `localAddress` {String} Local interface to bind for network connections.
   - `protocolVersion` {Number} Value of the `Sec-WebSocket-Version` header.
@@ -201,14 +202,14 @@ Create a new WebSocket instance.
 following URL scheme:
 
 ```
-ws+unix:///absolule/path/to/uds_socket:/pathname?search_params
+ws+unix:///absolute/path/to/uds_socket:/pathname?search_params
 ```
 
 Note that `:` is the separator between the socket path and the URL path. If
 the URL path is omitted
 
 ```
-ws+unix:///absolule/path/to/uds_socket
+ws+unix:///absolute/path/to/uds_socket
 ```
 
 it defaults to `/`.
@@ -285,7 +286,7 @@ A string indicating the type of binary data being transmitted by the connection.
 This should be one of "nodebuffer", "arraybuffer" or "fragments". Defaults to
 "nodebuffer". Type "fragments" will emit the array of fragments as received from
 the sender, without copyfull concatenation, which is useful for the performance
-of binary protocols transfering large messages with multiple fragments.
+of binary protocols transferring large messages with multiple fragments.
 
 ### websocket.bufferedAmount
 
@@ -359,7 +360,7 @@ Send a ping.
 
 ### websocket.pong([data[, mask[, failSilently]]])
 
-- `data` {Any} The data to send in the ping frame.
+- `data` {Any} The data to send in the pong frame.
 - `mask` {Boolean} Specifies whether `data` should be masked or not. Defaults
   to `true` when `websocket` is not a server client.
 - `failSilently` {Boolean} Specifies whether or not to throw an error if the
@@ -394,7 +395,7 @@ Removes an event listener emulating the `EventTarget` interface.
 
 ### websocket.resume()
 
-Resume the socket
+Resume the socket.
 
 ### websocket.send(data, [options][, callback])
 

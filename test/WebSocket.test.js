@@ -461,6 +461,21 @@ describe('WebSocket', function () {
         req.abort();
       });
     });
+
+    it('emits an error if the opening handshake timeout expires', function (done) {
+      server.once('upgrade', (req, socket) => socket.on('end', socket.end));
+
+      const ws = new WebSocket(`ws://localhost:${port}`, null, {
+        handshakeTimeout: 100
+      });
+
+      ws.on('open', () => assert.fail(null, null, 'connect shouldn\'t be raised here'));
+      ws.on('error', (err) => {
+        assert.ok(err instanceof Error);
+        assert.strictEqual(err.message, 'opening handshake has timed out');
+        done();
+      });
+    });
   });
 
   describe('connection with query string', function () {
@@ -1415,6 +1430,32 @@ describe('WebSocket', function () {
       });
 
       wss.on('connection', (client) => client.close(1000));
+    });
+
+    it('should assign "true" to wasClean when server closes with code 3000', function (done) {
+      const wss = new WebSocketServer({ port: ++port }, () => {
+        const ws = new WebSocket(`ws://localhost:${port}`);
+
+        ws.addEventListener('close', (closeEvent) => {
+          assert.ok(closeEvent.wasClean);
+          wss.close(done);
+        });
+      });
+
+      wss.on('connection', (client) => client.close(3000));
+    });
+
+    it('should assign "true" to wasClean when server closes with code 4999', function (done) {
+      const wss = new WebSocketServer({ port: ++port }, () => {
+        const ws = new WebSocket(`ws://localhost:${port}`);
+
+        ws.addEventListener('close', (closeEvent) => {
+          assert.ok(closeEvent.wasClean);
+          wss.close(done);
+        });
+      });
+
+      wss.on('connection', (client) => client.close(4999));
     });
 
     it('should receive valid CloseEvent when server closes with code 1001', function (done) {
