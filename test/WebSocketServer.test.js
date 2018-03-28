@@ -83,7 +83,7 @@ describe('WebSocketServer', function () {
       //
       // Skip this test on Windows as it throws errors for obvious reasons.
       //
-      if (process.platform === 'win32') return done();
+      if (process.platform === 'win32') return this.skip();
 
       const server = http.createServer();
       const sockPath = `/tmp/ws.${crypto.randomBytes(16).toString('hex')}.socket`;
@@ -103,23 +103,6 @@ describe('WebSocketServer', function () {
 
         const ws = new WebSocket(`ws+unix://${sockPath}:/foo?bar=bar`);
         ws.on('open', () => new WebSocket(`ws+unix://${sockPath}`));
-      });
-    });
-
-    it('will not crash when it receives an unhandled opcode', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}/`);
-
-        ws.on('open', () => ws._socket.write(Buffer.from([0x85, 0x00])));
-      });
-
-      wss.on('connection', (ws) => {
-        ws.on('error', (err) => {
-          assert.ok(err instanceof Error);
-          assert.strictEqual(err.message, 'invalid opcode: 5');
-          wss.close(done);
-        });
       });
     });
   });
@@ -876,6 +859,35 @@ describe('WebSocketServer', function () {
         });
 
         client.send(data);
+      });
+    });
+
+    it('does not crash when it receives an unhandled opcode', function (done) {
+      let closed = false;
+      const wss = new WebSocket.Server({ port: 0 }, () => {
+        const port = wss._server.address().port;
+        const ws = new WebSocket(`ws://localhost:${port}/`);
+
+        ws.on('open', () => ws._socket.write(Buffer.from([0x85, 0x00])));
+        ws.on('close', (code, reason) => {
+          assert.strictEqual(code, 1006);
+          assert.strictEqual(reason, '');
+          assert.ok(closed);
+          wss.close(done);
+        });
+      });
+
+      wss.on('connection', (ws) => {
+        ws.on('error', (err) => {
+          assert.ok(err instanceof Error);
+          assert.strictEqual(err.message, 'invalid opcode: 5');
+
+          ws.on('close', (code, reason) => {
+            assert.strictEqual(code, 1002);
+            assert.strictEqual(reason, '');
+            closed = true;
+          });
+        });
       });
     });
   });
