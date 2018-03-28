@@ -63,7 +63,7 @@ status code, otherwise the returned value sets the value of the
 
 `perMessageDeflate` can be used to control the behavior of
 [permessage-deflate extension][permessage-deflate].
-The extension is disabled when `false`. Defaults to `true`. If an object is
+The extension is disabled when `false` (default value). If an object is
 provided then that is extension parameters:
 
 - `serverNoContextTakeover` {Boolean} Whether to use context take over or not.
@@ -89,8 +89,11 @@ provided.
 ### Event: 'connection'
 
 - `socket` {WebSocket}
+- `request` {http.IncomingMessage}
 
-Emitted when the handshake is complete. `socket` is an instance of `WebSocket`.
+Emitted when the handshake is complete. `request` is the http GET request sent
+by the client. Useful for parsing authority headers, cookie headers, and other
+information.
 
 ### Event: 'error'
 
@@ -186,9 +189,9 @@ This class represents a WebSocket. It extends the `EventEmitter`.
   - `pfx` {String|Buffer} The private key, certificate, and CA certs.
   - `ca` {Array} Trusted certificates.
 
-`perMessageDeflate` parameters are the same of the server, the only difference
-is the direction of requests (e.g. `serverNoContextTakeover` is the value to be
-requested to the server).
+`perMessageDeflate` default value is `true`. When using an object, parameters
+are the same of the server. The only difference is the direction of requests
+(e.g. `serverNoContextTakeover` is the value to be requested to the server).
 
 Create a new WebSocket instance.
 
@@ -237,10 +240,7 @@ handshake.  This allows you to read headers from the server, for example
 
 ### Event: 'message'
 
-- `data` {String|Buffer}
-- `flags` {Object}
-  - `binary` {Boolean} Specifies if `data` is binary.
-  - `masked` {Boolean} Specifies if `data` was masked.
+- `data` {String|Buffer|ArrayBuffer|Buffer[]}
 
 Emitted when a message is received from the server.
 
@@ -251,18 +251,12 @@ Emitted when the connection is established.
 ### Event: 'ping'
 
 - `data` {Buffer}
-- `flags` {Object}
-  - `binary` {Boolean} Specifies if `data` is binary.
-  - `masked` {Boolean} Specifies if `data` was masked.
 
 Emitted when a ping is received from the server.
 
 ### Event: 'pong'
 
 - `data` {Buffer}
-- `flags` {Object}
-  - `binary` {Boolean} Specifies if `data` is binary.
-  - `masked` {Boolean} Specifies if `data` was masked.
 
 Emitted when a pong is received from the server.
 
@@ -422,13 +416,6 @@ Send `data` through the connection.
 ### websocket.terminate()
 
 Forcibly close the connection.
-
-### websocket.upgradeReq
-
-- {http.IncomingMessage}
-
-The http GET request sent by the client. Useful for parsing authority headers,
-cookie headers, and other information. This is only available for server clients.
 
 ### websocket.url
 
