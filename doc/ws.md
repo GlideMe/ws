@@ -72,9 +72,14 @@ provided then that is extension parameters:
 - `serverMaxWindowBits` {Number} The value of windowBits.
 - `clientMaxWindowBits` {Number} The value of max windowBits to be requested
   to clients.
-- `memLevel` {Number} The value of memLevel.
+- `level` {Number} The value of zlib's `level` param (0-9, default 8).
+- `memLevel` {Number} The value of zlib's `memLevel` param (1-9, default 8).
 - `threshold` {Number} Payloads smaller than this will not be compressed.
   Defaults to 1024 bytes.
+- `concurrencyLimit` {Number} The number of concurrent calls to zlib.
+  Calls above this limit will be queued. Default 10. You usually won't
+  need to touch this option. See [concurrency-limit][this issue] for more
+  details.
 
 If a property is empty then either an offered configuration or a default value
 is used.
@@ -424,4 +429,5 @@ Forcibly close the connection.
 
 The URL of the WebSocket server. Server clients don't have this attribute.
 
+[concurrency-limit]: https://github.com/websockets/ws/issues/1202
 [permessage-deflate]: https://tools.ietf.org/html/draft-ietf-hybi-permessage-compression-19
