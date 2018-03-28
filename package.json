@@ -2,7 +2,7 @@
   "author": "Einar Otto Stangvik <einaros@gmail.com> (http://2x.io)",
   "name": "ws",
   "description": "Simple to use, blazing fast and thoroughly tested websocket client and server for Node.js",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "license": "MIT",
   "main": "index.js",
   "keywords": [
@@ -29,12 +29,13 @@
   },
   "devDependencies": {
     "benchmark": "~2.1.2",
-    "bufferutil": "~2.0.0",
-    "eslint": "~3.16.0",
-    "eslint-config-semistandard": "~7.0.0",
-    "eslint-config-standard": "~6.2.1",
-    "eslint-plugin-promise": "~3.4.0",
-    "eslint-plugin-standard": "~2.0.1",
+    "bufferutil": "~3.0.0",
+    "eslint": "~3.17.0",
+    "eslint-config-standard": "~8.0.0-beta.1",
+    "eslint-plugin-import": "~2.2.0",
+    "eslint-plugin-node": "~4.2.0",
+    "eslint-plugin-promise": "~3.5.0",
+    "eslint-plugin-standard": "~2.1.0",
     "istanbul": "~0.4.5",
     "mocha": "~3.2.0",
     "utf-8-validate": "~3.0.0"
