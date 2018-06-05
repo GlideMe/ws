@@ -237,15 +237,6 @@ human-readable string explaining why the connection has been closed.
 Emitted when an error occurs. Errors from the underlying `net.Socket` are
 forwarded here.
 
-### Event: 'headers'
-
-- `headers` {Object}
-- `response` {http.IncomingMessage}
-
-Emitted when response headers are received from the server as part of the
-handshake.  This allows you to read headers from the server, for example
-'set-cookie' headers.
-
 ### Event: 'message'
 
 - `data` {String|Buffer|ArrayBuffer|Buffer[]}
@@ -278,6 +269,14 @@ response. This event gives the ability to read the response in order to extract
 useful information. If the server sends an invalid response and there isn't a
 listener for this event, an error is emitted.
 
+### Event: 'upgrade'
+
+- `response` {http.IncomingMessage}
+
+Emitted when response headers are received from the server as part of the
+handshake.  This allows you to read headers from the server, for example
+'set-cookie' headers.
+
 ### websocket.addEventListener(type, listener)
 
 - `type` {String} A string representing the event type to listen for.
@@ -302,13 +301,7 @@ of binary protocols transferring large messages with multiple fragments.
 The number of bytes of data that have been queued using calls to `send()` but
 not yet transmitted to the network.
 
-### websocket.bytesReceived
-
-- {Number}
-
-Received bytes count.
-
-### websocket.close([code][, reason])
+### websocket.close([code[, reason]])
 
 - `code` {Number} A numeric value indicating the status code explaining why
   the connection is being closed.
@@ -351,27 +344,23 @@ listener receives a `MessageEvent` named "message".
 An event listener to be called when the connection is established. The listener
 receives an `OpenEvent` named "open".
 
-### websocket.pause()
-
-Pause the socket.
-
-### websocket.ping([data[, mask[, failSilently]]])
+### websocket.ping([data[, mask]][, callback])
 
 - `data` {Any} The data to send in the ping frame.
 - `mask` {Boolean} Specifies whether `data` should be masked or not. Defaults
   to `true` when `websocket` is not a server client.
-- `failSilently` {Boolean} Specifies whether or not to throw an error if the
-  connection is not open.
+- `callback` {Function} An optional callback which is invoked when the ping
+  frame is written out.
 
 Send a ping.
 
-### websocket.pong([data[, mask[, failSilently]]])
+### websocket.pong([data[, mask]][, callback])
 
 - `data` {Any} The data to send in the pong frame.
 - `mask` {Boolean} Specifies whether `data` should be masked or not. Defaults
   to `true` when `websocket` is not a server client.
-- `failSilently` {Boolean} Specifies whether or not to throw an error if the
-  connection is not open.
+- `callback` {Function} An optional callback which is invoked when the pong
+  frame is written out.
 
 Send a pong.
 
@@ -380,12 +369,6 @@ Send a pong.
 - {String}
 
 The subprotocol selected by the server.
-
-### websocket.protocolVersion
-
-- {Number}
-
-The WebSocket protocol version used for this connection, 8 or 13.
 
 ### websocket.readyState
 
@@ -400,11 +383,7 @@ The current state of the connection. This is one of the ready state constants.
 
 Removes an event listener emulating the `EventTarget` interface.
 
-### websocket.resume()
-
-Resume the socket.
-
-### websocket.send(data, [options][, callback])
+### websocket.send(data[, options][, callback])
 
 - `data` {Any} The data to send.
 - `options` {Object}

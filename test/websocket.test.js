@@ -12,7 +12,7 @@ const net = require('net');
 const fs = require('fs');
 const os = require('os');
 
-const constants = require('../lib/Constants');
+const constants = require('../lib/constants');
 const WebSocket = require('..');
 
 const Buffer = safeBuffer.Buffer;
@@ -26,147 +26,168 @@ describe('WebSocket', function () {
     it('throws an error when using an invalid url', function () {
       assert.throws(
         () => new WebSocket('echo.websocket.org'),
-        /^Error: invalid url$/
-      );
-    });
-  });
-
-  describe('options', function () {
-    it('accepts an `agent` option', function (done) {
-      const agent = new CustomAgent();
-
-      agent.addRequest = () => {
-        done();
-      };
-
-      const ws = new WebSocket('ws://localhost', { agent });
-    });
-
-    it('accepts the `options` object as the 3rd argument', function () {
-      const agent = new CustomAgent();
-      let count = 0;
-      let ws;
-
-      agent.addRequest = (req) => count++;
-
-      ws = new WebSocket('ws://localhost', undefined, { agent });
-      ws = new WebSocket('ws://localhost', null, { agent });
-      ws = new WebSocket('ws://localhost', [], { agent });
-
-      assert.strictEqual(count, 3);
-    });
-
-    it('throws an error when using an invalid `protocolVersion`', function () {
-      const options = { agent: new CustomAgent(), protocolVersion: 1000 };
-
-      assert.throws(
-        () => new WebSocket('ws://localhost', options),
-        /^Error: unsupported protocol version: 1000 \(supported versions: 8, 13\)$/
+        /^Error: Invalid URL: echo\.websocket\.org$/
       );
     });
 
-    it('accepts the localAddress option', function (done) {
-      const wss = new WebSocket.Server({ host: '127.0.0.1', port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`, {
-          localAddress: '127.0.0.2'
-        });
+    describe('options', function () {
+      it('accepts an `agent` option', function (done) {
+        const agent = new CustomAgent();
 
-        ws.on('error', (err) => {
-          wss.close(() => {
-            //
-            // Skip this test on machines where 127.0.0.2 is disabled.
-            //
-            if (err.code === 'EADDRNOTAVAIL') return this.skip();
+        agent.addRequest = () => {
+          done();
+        };
 
-            done(err);
-          });
-        });
+        const ws = new WebSocket('ws://localhost', { agent });
       });
 
-      wss.on('connection', (ws, req) => {
-        assert.strictEqual(req.connection.remoteAddress, '127.0.0.2');
-        wss.close(done);
-      });
-    });
+      it('accepts the `options` object as 3rd argument', function () {
+        const agent = new CustomAgent();
+        let count = 0;
+        let ws;
 
-    it('accepts the localAddress option whether it was wrong interface', function () {
-      const localAddress = '123.456.789.428';
+        agent.addRequest = (req) => count++;
 
-      assert.throws(() => {
-        const ws = new WebSocket('ws://localhost', { localAddress });
-      }, (err) => {
-        return err instanceof TypeError && (err.code === 'ERR_INVALID_IP_ADDRESS' ||
-          err.message.includes(`must be a valid IP: ${localAddress}`));
-      });
-    });
+        ws = new WebSocket('ws://localhost', undefined, { agent });
+        ws = new WebSocket('ws://localhost', null, { agent });
+        ws = new WebSocket('ws://localhost', [], { agent });
 
-    it('accepts the family option', function (done) {
-      const re = process.platform === 'win32' ? /Loopback Pseudo-Interface/ : /lo/;
-      const ifaces = os.networkInterfaces();
-      const hasIPv6 = Object.keys(ifaces).some((name) => {
-        return re.test(name) && ifaces[name].some((info) => info.family === 'IPv6');
+        assert.strictEqual(count, 3);
       });
 
-      //
-      // Skip this test on machines where IPv6 is not supported.
-      //
-      if (!hasIPv6) return this.skip();
+      it('throws an error when using an invalid `protocolVersion`', function () {
+        const options = { agent: new CustomAgent(), protocolVersion: 1000 };
 
-      dns.lookup('localhost', { family: 6, all: true }, (err, addresses) => {
-        //
-        // Skip this test if localhost does not resolve to ::1.
-        //
-        if (err) {
-          return err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN'
-            ? this.skip()
-            : done(err);
-        }
+        assert.throws(
+          () => new WebSocket('ws://localhost', options),
+          /^RangeError: Unsupported protocol version: 1000 \(supported versions: 8, 13\)$/
+        );
+      });
 
-        if (!addresses.some((val) => val.address === '::1')) return this.skip();
-
-        const wss = new WebSocket.Server({ host: '::1', port: 0 }, () => {
+      it('accepts the `localAddress` option', function (done) {
+        const wss = new WebSocket.Server({ host: '127.0.0.1', port: 0 }, () => {
           const port = wss._server.address().port;
-          const ws = new WebSocket(`ws://localhost:${port}`, { family: 6 });
+          const ws = new WebSocket(`ws://localhost:${port}`, {
+            localAddress: '127.0.0.2'
+          });
+
+          ws.on('error', (err) => {
+            wss.close(() => {
+              //
+              // Skip this test on machines where 127.0.0.2 is disabled.
+              //
+              if (err.code === 'EADDRNOTAVAIL') return this.skip();
+
+              done(err);
+            });
+          });
         });
 
         wss.on('connection', (ws, req) => {
-          assert.strictEqual(req.connection.remoteAddress, '::1');
+          assert.strictEqual(req.connection.remoteAddress, '127.0.0.2');
           wss.close(done);
+        });
+      });
+
+      it('accepts the `family` option', function (done) {
+        const re = process.platform === 'win32' ? /Loopback Pseudo-Interface/ : /lo/;
+        const ifaces = os.networkInterfaces();
+        const hasIPv6 = Object.keys(ifaces).some((name) => {
+          return re.test(name) && ifaces[name].some((info) => info.family === 'IPv6');
+        });
+
+        //
+        // Skip this test on machines where IPv6 is not supported.
+        //
+        if (!hasIPv6) return this.skip();
+
+        dns.lookup('localhost', { family: 6, all: true }, (err, addresses) => {
+          //
+          // Skip this test if localhost does not resolve to ::1.
+          //
+          if (err) {
+            return err.code === 'ENOTFOUND' || err.code === 'EAI_AGAIN'
+              ? this.skip()
+              : done(err);
+          }
+
+          if (!addresses.some((val) => val.address === '::1')) return this.skip();
+
+          const wss = new WebSocket.Server({ host: '::1', port: 0 }, () => {
+            const port = wss._server.address().port;
+            const ws = new WebSocket(`ws://localhost:${port}`, { family: 6 });
+          });
+
+          wss.on('connection', (ws, req) => {
+            assert.strictEqual(req.connection.remoteAddress, '::1');
+            wss.close(done);
+          });
         });
       });
     });
   });
 
-  describe('properties', function () {
-    it('#bytesReceived exposes number of bytes received', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-        ws.on('message', () => {
-          assert.strictEqual(ws.bytesReceived, 8);
-          wss.close(done);
+  describe('Constants', function () {
+    const readyStates = {
+      CONNECTING: 0,
+      OPEN: 1,
+      CLOSING: 2,
+      CLOSED: 3
+    };
+
+    Object.keys(readyStates).forEach((state) => {
+      describe(`\`${state}\``, function () {
+        it('is enumerable property of class', function () {
+          const propertyDescripter = Object.getOwnPropertyDescriptor(WebSocket, state);
+
+          assert.strictEqual(propertyDescripter.value, readyStates[state]);
+          assert.strictEqual(propertyDescripter.enumerable, true);
+        });
+
+        it('is property of instance', function () {
+          const ws = new WebSocket('ws://localhost', {
+            agent: new CustomAgent()
+          });
+
+          assert.strictEqual(ws[state], readyStates[state]);
         });
       });
-      wss.on('connection', (ws) => ws.send('foobar'));
     });
+  });
 
-    it('#url exposes the server url', function () {
-      const url = 'ws://localhost';
-      const ws = new WebSocket(url, { agent: new CustomAgent() });
+  describe('Attributes', function () {
+    describe('`binaryType`', function () {
+      it("defaults to 'nodebuffer'", function () {
+        const ws = new WebSocket('ws://localhost', {
+          agent: new CustomAgent()
+        });
 
-      assert.strictEqual(ws.url, url);
-    });
-
-    it('#protocolVersion exposes the protocol version', function () {
-      const ws = new WebSocket('ws://localhost', {
-        agent: new CustomAgent()
+        assert.strictEqual(ws.binaryType, 'nodebuffer');
       });
 
-      assert.strictEqual(ws.protocolVersion, 13);
+      it("can be changed to 'arraybuffer' or 'fragments'", function () {
+        const ws = new WebSocket('ws://localhost', {
+          agent: new CustomAgent()
+        });
+
+        ws.binaryType = 'arraybuffer';
+        assert.strictEqual(ws.binaryType, 'arraybuffer');
+
+        ws.binaryType = 'foo';
+        assert.strictEqual(ws.binaryType, 'arraybuffer');
+
+        ws.binaryType = 'fragments';
+        assert.strictEqual(ws.binaryType, 'fragments');
+
+        ws.binaryType = '';
+        assert.strictEqual(ws.binaryType, 'fragments');
+
+        ws.binaryType = 'nodebuffer';
+        assert.strictEqual(ws.binaryType, 'nodebuffer');
+      });
     });
 
-    describe('#bufferedAmount', function () {
+    describe('`bufferedAmount`', function () {
       it('defaults to zero', function () {
         const ws = new WebSocket('ws://localhost', {
           agent: new CustomAgent()
@@ -229,48 +250,72 @@ describe('WebSocket', function () {
       });
     });
 
-    describe('Custom headers', function () {
-      const server = http.createServer();
+    describe('`extensions`', function () {
+      it('exposes the negotiated extensions names (1/2)', function (done) {
+        const wss = new WebSocket.Server({ port: 0 }, () => {
+          const port = wss._server.address().port;
+          const ws = new WebSocket(`ws://localhost:${port}`);
 
-      beforeEach((done) => server.listen(0, done));
-      afterEach((done) => server.close(done));
+          assert.strictEqual(ws.extensions, '');
 
-      it('request has an authorization header', function (done) {
-        const wss = new WebSocket.Server({ server });
-        const auth = 'test:testpass';
-
-        server.once('upgrade', (req, socket, head) => {
-          assert.ok(req.headers.authorization);
-          assert.strictEqual(
-            req.headers.authorization,
-            `Basic ${Buffer.from(auth).toString('base64')}`
-          );
-
-          wss.close(done);
+          ws.on('open', () => {
+            assert.strictEqual(ws.extensions, '');
+            ws.on('close', () => wss.close(done));
+          });
         });
 
-        const port = server.address().port;
-        const ws = new WebSocket(`ws://${auth}@localhost:${port}`);
+        wss.on('connection', (ws) => {
+          assert.strictEqual(ws.extensions, '');
+          ws.close();
+        });
       });
 
-      it('accepts custom headers', function (done) {
-        const wss = new WebSocket.Server({ server });
+      it('exposes the negotiated extensions names (2/2)', function (done) {
+        const wss = new WebSocket.Server({
+          perMessageDeflate: true,
+          port: 0
+        }, () => {
+          const port = wss._server.address().port;
+          const ws = new WebSocket(`ws://localhost:${port}`);
 
-        server.once('upgrade', (req, socket, head) => {
-          assert.ok(req.headers.cookie);
-          assert.strictEqual(req.headers.cookie, 'foo=bar');
+          assert.strictEqual(ws.extensions, '');
 
-          wss.close(done);
+          ws.on('open', () => {
+            assert.strictEqual(ws.extensions, 'permessage-deflate');
+            ws.on('close', () => wss.close(done));
+          });
         });
 
-        const ws = new WebSocket(`ws://localhost:${server.address().port}`, {
-          headers: { 'Cookie': 'foo=bar' }
+        wss.on('connection', (ws) => {
+          assert.strictEqual(ws.extensions, 'permessage-deflate');
+          ws.close();
         });
       });
     });
 
-    describe('#readyState', function () {
-      it('defaults to connecting', function () {
+    describe('`protocol`', function () {
+      it('exposes the subprotocol selected by the server', function (done) {
+        const wss = new WebSocket.Server({ port: 0 }, () => {
+          const port = wss._server.address().port;
+          const ws = new WebSocket(`ws://localhost:${port}`, 'foo');
+
+          assert.strictEqual(ws.extensions, '');
+
+          ws.on('open', () => {
+            assert.strictEqual(ws.protocol, 'foo');
+            ws.on('close', () => wss.close(done));
+          });
+        });
+
+        wss.on('connection', (ws) => {
+          assert.strictEqual(ws.protocol, 'foo');
+          ws.close();
+        });
+      });
+    });
+
+    describe('`readyState`', function () {
+      it('defaults to `CONNECTING`', function () {
         const ws = new WebSocket('ws://localhost', {
           agent: new CustomAgent()
         });
@@ -278,7 +323,7 @@ describe('WebSocket', function () {
         assert.strictEqual(ws.readyState, WebSocket.CONNECTING);
       });
 
-      it('set to open once connection is established', function (done) {
+      it('is set to `OPEN` once connection is established', function (done) {
         const wss = new WebSocket.Server({ port: 0 }, () => {
           const port = wss._server.address().port;
           const ws = new WebSocket(`ws://localhost:${port}`);
@@ -292,7 +337,7 @@ describe('WebSocket', function () {
         });
       });
 
-      it('set to closed once connection is closed', function (done) {
+      it('is set to `CLOSED` once connection is closed', function (done) {
         const wss = new WebSocket.Server({ port: 0 }, () => {
           const port = wss._server.address().port;
           const ws = new WebSocket(`ws://localhost:${port}`);
@@ -306,7 +351,7 @@ describe('WebSocket', function () {
         });
       });
 
-      it('set to closed once connection is terminated', function (done) {
+      it('is set to `CLOSED` once connection is terminated', function (done) {
         const wss = new WebSocket.Server({ port: 0 }, () => {
           const port = wss._server.address().port;
           const ws = new WebSocket(`ws://localhost:${port}`);
@@ -321,73 +366,81 @@ describe('WebSocket', function () {
       });
     });
 
-    const readyStates = {
-      CONNECTING: 0,
-      OPEN: 1,
-      CLOSING: 2,
-      CLOSED: 3
-    };
+    describe('`url`', function () {
+      it('exposes the server url', function () {
+        const url = 'ws://localhost';
+        const ws = new WebSocket(url, { agent: new CustomAgent() });
 
-    Object.keys(readyStates).forEach((state) => {
-      describe(`.${state}`, function () {
-        it('is enumerable property of class', function () {
-          const propertyDescripter = Object.getOwnPropertyDescriptor(WebSocket, state);
-
-          assert.strictEqual(propertyDescripter.value, readyStates[state]);
-          assert.strictEqual(propertyDescripter.enumerable, true);
-        });
-
-        it('is property of instance', function () {
-          const ws = new WebSocket('ws://localhost', {
-            agent: new CustomAgent()
-          });
-
-          assert.strictEqual(ws[state], readyStates[state]);
-        });
+        assert.strictEqual(ws.url, url);
       });
     });
   });
 
-  describe('events', function () {
-    it('emits a ping event', function (done) {
+  describe('Events', function () {
+    it("emits an 'error' event if an error occurs", function (done) {
+      const wss = new WebSocket.Server({ port: 0 }, () => {
+        const port = wss._server.address().port;
+        const ws = new WebSocket(`ws://localhost:${port}`);
+
+        ws.on('error', (err) => {
+          assert.ok(err instanceof RangeError);
+          assert.strictEqual(
+            err.message,
+            'Invalid WebSocket frame: invalid opcode 5'
+          );
+
+          ws.on('close', (code, reason) => {
+            assert.strictEqual(code, 1002);
+            assert.strictEqual(reason, '');
+            wss.close(done);
+          });
+        });
+      });
+
+      wss.on('connection', (ws) => {
+        ws._socket.write(Buffer.from([0x85, 0x00]));
+      });
+    });
+
+    it("emits an 'upgrade' event", function (done) {
+      const wss = new WebSocket.Server({ port: 0 }, () => {
+        const port = wss._server.address().port;
+        const ws = new WebSocket(`ws://localhost:${port}`);
+        ws.on('upgrade', (res) => {
+          assert.ok(res instanceof http.IncomingMessage);
+          wss.close(done);
+        });
+      });
+    });
+
+    it("emits a 'ping' event", function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
         ws.on('ping', () => wss.close(done));
       });
 
-      wss.on('connection', (client) => client.ping());
+      wss.on('connection', (ws) => ws.ping());
     });
 
-    it('emits a pong event', function (done) {
+    it("emits a 'pong' event", function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
         ws.on('pong', () => wss.close(done));
       });
 
-      wss.on('connection', (client) => client.pong());
-    });
-
-    it('emits a headers event', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-        ws.on('headers', (headers, res) => {
-          assert.strictEqual(headers, res.headers);
-          wss.close(done);
-        });
-      });
+      wss.on('connection', (ws) => ws.pong());
     });
   });
 
-  describe('connection establishing', function () {
+  describe('Connection establishing', function () {
     const server = http.createServer();
 
     beforeEach((done) => server.listen(0, done));
     afterEach((done) => server.close(done));
 
-    it('invalid server key is denied', function (done) {
+    it('fails if the Sec-WebSocket-Accept header is invalid', function (done) {
       server.once('upgrade', (req, socket) => {
         socket.on('end', socket.end);
         socket.write(
@@ -403,7 +456,7 @@ describe('WebSocket', function () {
 
       ws.on('error', (err) => {
         assert.ok(err instanceof Error);
-        assert.strictEqual(err.message, 'invalid server key');
+        assert.strictEqual(err.message, 'Invalid Sec-WebSocket-Accept header');
         done();
       });
     });
@@ -445,10 +498,10 @@ describe('WebSocket', function () {
 
       const ws = new WebSocket(`ws://localhost:${server.address().port}`);
 
-      ws.on('open', () => done(new Error("unexpected 'open' event")));
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
       ws.on('error', (err) => {
         assert.ok(err instanceof Error);
-        assert.strictEqual(err.message, 'unexpected server response (401)');
+        assert.strictEqual(err.message, 'Unexpected server response: 401');
         done();
       });
     });
@@ -467,8 +520,8 @@ describe('WebSocket', function () {
 
       const ws = new WebSocket(`ws://localhost:${server.address().port}`);
 
-      ws.on('open', () => done(new Error("unexpected 'open' event")));
-      ws.on('error', () => done(new Error("unexpected 'error' event")));
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
+      ws.on('error', () => done(new Error("Unexpected 'error' event")));
       ws.on('unexpected-response', (req, res) => {
         assert.strictEqual(res.statusCode, 401);
 
@@ -499,8 +552,8 @@ describe('WebSocket', function () {
 
       const ws = new WebSocket(`ws://localhost:${server.address().port}`);
 
-      ws.on('open', () => done(new Error("unexpected 'open' event")));
-      ws.on('error', () => done(new Error("unexpected 'error' event")));
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
+      ws.on('error', () => done(new Error("Unexpected 'error' event")));
       ws.on('unexpected-response', (req, res) => {
         assert.strictEqual(res.statusCode, 401);
 
@@ -517,10 +570,10 @@ describe('WebSocket', function () {
         handshakeTimeout: 100
       });
 
-      ws.on('open', () => done(new Error("unexpected 'open' event")));
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
       ws.on('error', (err) => {
         assert.ok(err instanceof Error);
-        assert.strictEqual(err.message, 'opening handshake has timed out');
+        assert.strictEqual(err.message, 'Opening handshake has timed out');
         done();
       });
     });
@@ -543,45 +596,73 @@ describe('WebSocket', function () {
 
       const ws = new WebSocket(`ws://localhost:${server.address().port}`);
 
-      ws.on('open', () => done(new Error("unexpected 'open' event")));
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
       ws.on('error', (err) => {
         assert.ok(err instanceof Error);
-        assert.strictEqual(err.message, 'invalid Sec-WebSocket-Extensions header');
+        assert.strictEqual(err.message, 'Invalid Sec-WebSocket-Extensions header');
         ws.on('close', () => done());
       });
     });
 
     it('fails if server sends a subprotocol when none was requested', function (done) {
-      server.once('upgrade', (req, socket) => {
-        const key = crypto.createHash('sha1')
-          .update(req.headers['sec-websocket-key'] + constants.GUID, 'binary')
-          .digest('base64');
-
-        socket.end(
-          'HTTP/1.1 101 Switching Protocols\r\n' +
-          'Upgrade: websocket\r\n' +
-          'Connection: Upgrade\r\n' +
-          `Sec-WebSocket-Accept: ${key}\r\n` +
-          'Sec-WebSocket-Protocol: foo\r\n' +
-          '\r\n'
-        );
+      const wss = new WebSocket.Server({
+        handleProtocols: () => 'foo',
+        server
       });
 
       const ws = new WebSocket(`ws://localhost:${server.address().port}`);
 
-      ws.on('open', () => done(new Error("unexpected 'open' event")));
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
       ws.on('error', (err) => {
         assert.ok(err instanceof Error);
         assert.strictEqual(
           err.message,
-          'server sent a subprotocol even though none requested'
+          'Server sent a subprotocol but none was requested'
         );
-        ws.on('close', () => done());
+        ws.on('close', () => wss.close(done));
+      });
+    });
+
+    it('fails if server sends an invalid subprotocol', function (done) {
+      const wss = new WebSocket.Server({
+        handleProtocols: () => 'baz',
+        server
+      });
+
+      const ws = new WebSocket(`ws://localhost:${server.address().port}`, [
+        'foo',
+        'bar'
+      ]);
+
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
+      ws.on('error', (err) => {
+        assert.ok(err instanceof Error);
+        assert.strictEqual(err.message, 'Server sent an invalid subprotocol');
+        ws.on('close', () => wss.close(done));
+      });
+    });
+
+    it('fails if server sends no subprotocol', function (done) {
+      const wss = new WebSocket.Server({
+        handleProtocols: () => {},
+        server
+      });
+
+      const ws = new WebSocket(`ws://localhost:${server.address().port}`, [
+        'foo',
+        'bar'
+      ]);
+
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
+      ws.on('error', (err) => {
+        assert.ok(err instanceof Error);
+        assert.strictEqual(err.message, 'Server sent no subprotocol');
+        ws.on('close', () => wss.close(done));
       });
     });
   });
 
-  describe('connection with query string', function () {
+  describe('Connection with query string', function () {
     it('connects when pathname is not null', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
@@ -601,99 +682,54 @@ describe('WebSocket', function () {
     });
   });
 
-  describe('#pause and #resume', function () {
-    it('throws an error when `readyState` is not `OPEN` (pause)', function () {
-      const ws = new WebSocket('ws://localhost', { agent: new CustomAgent() });
-
-      assert.throws(() => ws.pause(), /^Error: not opened$/);
-    });
-
-    it('throws an error when `readyState` is not `OPEN` (resume)', function () {
-      const ws = new WebSocket('ws://localhost', { agent: new CustomAgent() });
-
-      assert.throws(() => ws.resume(), /^Error: not opened$/);
-    });
-
-    it('pauses the underlying stream', function (done) {
-      // this test is sort-of racecondition'y, since an unlikely slow connection
-      // to localhost can cause the test to succeed even when the stream pausing
-      // isn't working as intended. that is an extremely unlikely scenario, though
-      // and an acceptable risk for the test.
-      let openCount = 0;
-      let serverClient;
-      let client;
-
-      const onOpen = () => {
-        if (++openCount !== 2) return;
-
-        let paused = true;
-        serverClient.on('message', () => {
-          assert.ok(!paused);
-          wss.close(done);
-        });
-        serverClient.pause();
-
-        setTimeout(() => {
-          paused = false;
-          serverClient.resume();
-        }, 200);
-
-        client.send('foo');
-      };
-
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-
-        serverClient = ws;
-        serverClient.on('open', onOpen);
-      });
-
-      wss.on('connection', (ws) => {
-        client = ws;
-        onOpen();
-      });
-    });
-  });
-
   describe('#ping', function () {
-    it('before connect should fail', function () {
+    it('throws an error if `readyState` is not `OPEN`', function (done) {
       const ws = new WebSocket('ws://localhost', {
         agent: new CustomAgent()
       });
 
-      assert.throws(() => ws.ping(), /^Error: not opened$/);
-    });
+      assert.throws(
+        () => ws.ping(),
+        /^Error: WebSocket is not open: readyState 0 \(CONNECTING\)$/
+      );
 
-    it('before connect can silently fail', function () {
-      const ws = new WebSocket('ws://localhost', {
-        agent: new CustomAgent()
-      });
-
-      assert.doesNotThrow(() => ws.ping('', true, true));
-    });
-
-    it('without message is successfully transmitted to the server', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-
-        ws.on('open', () => ws.ping());
-      });
-
-      wss.on('connection', (ws) => {
-        ws.on('ping', () => wss.close(done));
+      ws.ping((err) => {
+        assert.ok(err instanceof Error);
+        assert.strictEqual(
+          err.message,
+          'WebSocket is not open: readyState 0 (CONNECTING)'
+        );
+        done();
       });
     });
 
-    it('with message is successfully transmitted to the server', function (done) {
+    it('can send a ping with no data', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
         ws.on('open', () => {
-          ws.ping('hi', true);
-          ws.ping('hi');
+          ws.ping(() => ws.ping());
+        });
+      });
+
+      wss.on('connection', (ws) => {
+        let pings = 0;
+        ws.on('ping', (data) => {
+          assert.ok(Buffer.isBuffer(data));
+          assert.strictEqual(data.length, 0);
+          if (++pings === 2) wss.close(done);
+        });
+      });
+    });
+
+    it('can send a ping with data', function (done) {
+      const wss = new WebSocket.Server({ port: 0 }, () => {
+        const port = wss._server.address().port;
+        const ws = new WebSocket(`ws://localhost:${port}`);
+
+        ws.on('open', () => {
+          ws.ping('hi', () => ws.ping('hi', true));
         });
       });
 
@@ -724,43 +760,53 @@ describe('WebSocket', function () {
   });
 
   describe('#pong', function () {
-    it('before connect should fail', () => {
+    it('throws an error if `readyState` is not `OPEN`', (done) => {
       const ws = new WebSocket('ws://localhost', {
         agent: new CustomAgent()
       });
 
-      assert.throws(() => ws.pong(), /^Error: not opened$/);
-    });
+      assert.throws(
+        () => ws.pong(),
+        /^Error: WebSocket is not open: readyState 0 \(CONNECTING\)$/
+      );
 
-    it('before connect can silently fail', function () {
-      const ws = new WebSocket('ws://localhost', {
-        agent: new CustomAgent()
-      });
-
-      assert.doesNotThrow(() => ws.pong('', true, true));
-    });
-
-    it('without message is successfully transmitted to the server', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-
-        ws.on('open', () => ws.pong());
-      });
-
-      wss.on('connection', (ws) => {
-        ws.on('pong', () => wss.close(done));
+      ws.pong((err) => {
+        assert.ok(err instanceof Error);
+        assert.strictEqual(
+          err.message,
+          'WebSocket is not open: readyState 0 (CONNECTING)'
+        );
+        done();
       });
     });
 
-    it('with message is successfully transmitted to the server', function (done) {
+    it('can send a pong with no data', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
         ws.on('open', () => {
-          ws.pong('hi', true);
-          ws.pong('hi');
+          ws.pong(() => ws.pong());
+        });
+      });
+
+      wss.on('connection', (ws) => {
+        let pongs = 0;
+        ws.on('pong', (data) => {
+          assert.ok(Buffer.isBuffer(data));
+          assert.strictEqual(data.length, 0);
+          if (++pongs === 2) wss.close(done);
+        });
+      });
+    });
+
+    it('can send a pong with data', function (done) {
+      const wss = new WebSocket.Server({ port: 0 }, () => {
+        const port = wss._server.address().port;
+        const ws = new WebSocket(`ws://localhost:${port}`);
+
+        ws.on('open', () => {
+          ws.pong('hi', () => ws.pong('hi', true));
         });
       });
 
@@ -791,7 +837,7 @@ describe('WebSocket', function () {
   });
 
   describe('#send', function () {
-    it('very long binary data can be sent and received', function (done) {
+    it('can send a big binary message', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const array = new Float32Array(5 * 1024 * 1024);
 
@@ -814,7 +860,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('can send and receive text data', function (done) {
+    it('can send text data', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -911,7 +957,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('ArrayBuffer is auto-detected without binary flag', function (done) {
+    it('can send an `ArrayBuffer`', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const array = new Float32Array(5);
 
@@ -934,7 +980,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('Buffer is auto-detected without binary flag', function (done) {
+    it('can send a `Buffer`', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const buf = Buffer.from('foobar');
         const port = wss._server.address().port;
@@ -953,26 +999,46 @@ describe('WebSocket', function () {
       });
     });
 
-    it('before connect should fail', function () {
+    it('throws an error if `readyState` is not `OPEN`', function () {
       const ws = new WebSocket('ws://localhost', {
         agent: new CustomAgent()
       });
 
-      assert.throws(() => ws.send('hi'), /^Error: not opened$/);
+      assert.throws(
+        () => ws.send('hi'),
+        /^Error: WebSocket is not open: readyState 0 \(CONNECTING\)$/
+      );
     });
 
-    it('before connect should pass error through callback, if present', function () {
+    it('passes errors to the callback, if present', function () {
       const ws = new WebSocket('ws://localhost', {
         agent: new CustomAgent()
       });
 
       ws.send('hi', (err) => {
         assert.ok(err instanceof Error);
-        assert.strictEqual(err.message, 'not opened');
+        assert.strictEqual(
+          err.message,
+          'WebSocket is not open: readyState 0 (CONNECTING)'
+        );
       });
     });
 
-    it('without data should be successful', function (done) {
+    it('calls the optional callback when data is written out', function (done) {
+      const wss = new WebSocket.Server({ port: 0 }, () => {
+        const port = wss._server.address().port;
+        const ws = new WebSocket(`ws://localhost:${port}`);
+
+        ws.on('open', () => {
+          ws.send('hi', (err) => {
+            assert.ifError(err);
+            wss.close(done);
+          });
+        });
+      });
+    });
+
+    it('works when the `data` argument is falsy', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -988,21 +1054,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('calls optional callback when flushed', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-
-        ws.on('open', () => {
-          ws.send('hi', (err) => {
-            assert.ifError(err);
-            wss.close(done);
-          });
-        });
-      });
-    });
-
-    it('with unmasked message is successfully transmitted to the server', function (done) {
+    it('can send text data with `mask` option set to `false`', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -1018,23 +1070,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('with masked message is successfully transmitted to the server', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-
-        ws.on('open', () => ws.send('hi', { mask: true }));
-      });
-
-      wss.on('connection', (ws) => {
-        ws.on('message', (message) => {
-          assert.strictEqual(message, 'hi');
-          wss.close(done);
-        });
-      });
-    });
-
-    it('with unmasked binary message is successfully transmitted to the server', function (done) {
+    it('can send binary data with `mask` option set to `false`', function (done) {
       const array = new Float32Array(5);
 
       for (let i = 0; i < array.length; ++i) {
@@ -1045,29 +1081,7 @@ describe('WebSocket', function () {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
-        ws.on('open', () => ws.send(array, { mask: false, binary: true }));
-      });
-
-      wss.on('connection', (ws) => {
-        ws.on('message', (message) => {
-          assert.ok(message.equals(Buffer.from(array.buffer)));
-          wss.close(done);
-        });
-      });
-    });
-
-    it('with masked binary message is successfully transmitted to the server', function (done) {
-      const array = new Float32Array(5);
-
-      for (let i = 0; i < array.length; ++i) {
-        array[i] = i / 2;
-      }
-
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-
-        ws.on('open', () => ws.send(array, { mask: true, binary: true }));
+        ws.on('open', () => ws.send(array, { mask: false }));
       });
 
       wss.on('connection', (ws) => {
@@ -1085,10 +1099,13 @@ describe('WebSocket', function () {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
-        ws.on('open', () => done(new Error("unexpected 'open' event")));
+        ws.on('open', () => done(new Error("Unexpected 'open' event")));
         ws.on('error', (err) => {
           assert.ok(err instanceof Error);
-          assert.strictEqual(err.message, 'closed before the connection is established');
+          assert.strictEqual(
+            err.message,
+            'WebSocket was closed before the connection was established'
+          );
           ws.on('close', () => wss.close(done));
         });
         ws.close(1001);
@@ -1103,10 +1120,13 @@ describe('WebSocket', function () {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
-        ws.on('open', () => done(new Error("unexpected 'open' event")));
+        ws.on('open', () => done(new Error("Unexpected 'open' event")));
         ws.on('error', (err) => {
           assert.ok(err instanceof Error);
-          assert.strictEqual(err.message, 'closed before the connection is established');
+          assert.strictEqual(
+            err.message,
+            'WebSocket was closed before the connection was established'
+          );
           ws.on('close', () => wss.close(done));
         });
         setTimeout(() => ws.close(1001), 150);
@@ -1116,7 +1136,7 @@ describe('WebSocket', function () {
     it('can be called from an error listener while connecting', function (done) {
       const ws = new WebSocket('ws://localhost:1337');
 
-      ws.on('open', () => done(new Error("unexpected 'open' event")));
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
       ws.on('error', (err) => {
         assert.ok(err instanceof Error);
         assert.strictEqual(err.code, 'ECONNREFUSED');
@@ -1125,18 +1145,21 @@ describe('WebSocket', function () {
       });
     });
 
-    it('can be called from a listener of the headers event', function (done) {
+    it("can be called from a listener of the 'upgrade' event", function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
-        ws.on('open', () => done(new Error("unexpected 'open' event")));
+        ws.on('open', () => done(new Error("Unexpected 'open' event")));
         ws.on('error', (err) => {
           assert.ok(err instanceof Error);
-          assert.strictEqual(err.message, 'closed before the connection is established');
+          assert.strictEqual(
+            err.message,
+            'WebSocket was closed before the connection was established'
+          );
           ws.on('close', () => wss.close(done));
         });
-        ws.on('headers', () => ws.close());
+        ws.on('upgrade', () => ws.close());
       });
     });
 
@@ -1148,7 +1171,7 @@ describe('WebSocket', function () {
         ws.on('open', () => {
           assert.throws(
             () => ws.close('error'),
-            /^Error: first argument must be a valid error code number$/
+            /^TypeError: First argument must be a valid error code number$/
           );
 
           wss.close(done);
@@ -1164,7 +1187,7 @@ describe('WebSocket', function () {
         ws.on('open', () => {
           assert.throws(
             () => ws.close(1004),
-            /^Error: first argument must be a valid error code number$/
+            /^TypeError: First argument must be a valid error code number$/
           );
 
           wss.close(done);
@@ -1222,7 +1245,7 @@ describe('WebSocket', function () {
           assert.ok(sent.equals(Buffer.from([0x88, 0x00])));
 
           ws.on('close', (code, reason) => {
-            assert.strictEqual(code, 1000);
+            assert.strictEqual(code, 1005);
             assert.strictEqual(reason, '');
             wss.close(done);
           });
@@ -1295,16 +1318,18 @@ describe('WebSocket', function () {
 
         ws.on('message', (message) => messages.push(message));
         ws.on('close', (code) => {
-          assert.strictEqual(code, 1000);
+          assert.strictEqual(code, 1005);
           assert.deepStrictEqual(messages, ['foo', 'bar', 'baz']);
           wss.close(done);
         });
       });
 
       wss.on('connection', (ws) => {
-        ws.send('foo');
-        ws.send('bar');
-        ws.send('baz');
+        const callback = (err) => assert.ifError(err);
+
+        ws.send('foo', callback);
+        ws.send('bar', callback);
+        ws.send('baz', callback);
         ws.close();
         ws.close();
       });
@@ -1324,13 +1349,13 @@ describe('WebSocket', function () {
       wss.on('connection', (ws) => ws.close(1013));
     });
 
-    it('does nothing if the connection is already CLOSED', function (done) {
+    it('does nothing if `readyState` is `CLOSED`', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
         ws.on('close', (code) => {
-          assert.strictEqual(code, 1000);
+          assert.strictEqual(code, 1005);
           assert.strictEqual(ws.readyState, WebSocket.CLOSED);
           ws.close();
           wss.close(done);
@@ -1347,10 +1372,13 @@ describe('WebSocket', function () {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
-        ws.on('open', () => done(new Error("unexpected 'open' event")));
+        ws.on('open', () => done(new Error("Unexpected 'open' event")));
         ws.on('error', (err) => {
           assert.ok(err instanceof Error);
-          assert.strictEqual(err.message, 'closed before the connection is established');
+          assert.strictEqual(
+            err.message,
+            'WebSocket was closed before the connection was established'
+          );
           ws.on('close', () => wss.close(done));
         });
         ws.terminate();
@@ -1365,10 +1393,13 @@ describe('WebSocket', function () {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
-        ws.on('open', () => done(new Error("unexpected 'open' event")));
+        ws.on('open', () => done(new Error("Unexpected 'open' event")));
         ws.on('error', (err) => {
           assert.ok(err instanceof Error);
-          assert.strictEqual(err.message, 'closed before the connection is established');
+          assert.strictEqual(
+            err.message,
+            'WebSocket was closed before the connection was established'
+          );
           ws.on('close', () => wss.close(done));
         });
         setTimeout(() => ws.terminate(), 150);
@@ -1378,7 +1409,7 @@ describe('WebSocket', function () {
     it('can be called from an error listener while connecting', function (done) {
       const ws = new WebSocket('ws://localhost:1337');
 
-      ws.on('open', () => done(new Error("unexpected 'open' event")));
+      ws.on('open', () => done(new Error("Unexpected 'open' event")));
       ws.on('error', (err) => {
         assert.ok(err instanceof Error);
         assert.strictEqual(err.code, 'ECONNREFUSED');
@@ -1387,22 +1418,25 @@ describe('WebSocket', function () {
       });
     });
 
-    it('can be called from a listener of the headers event', function (done) {
+    it("can be called from a listener of the 'upgrade' event", function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
-        ws.on('open', () => done(new Error("unexpected 'open' event")));
+        ws.on('open', () => done(new Error("Unexpected 'open' event")));
         ws.on('error', (err) => {
           assert.ok(err instanceof Error);
-          assert.strictEqual(err.message, 'closed before the connection is established');
+          assert.strictEqual(
+            err.message,
+            'WebSocket was closed before the connection was established'
+          );
           ws.on('close', () => wss.close(done));
         });
-        ws.on('headers', () => ws.terminate());
+        ws.on('upgrade', () => ws.terminate());
       });
     });
 
-    it('does nothing if the connection is already CLOSED', function (done) {
+    it('does nothing if `readyState` is `CLOSED`', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -1420,7 +1454,7 @@ describe('WebSocket', function () {
   });
 
   describe('WHATWG API emulation', function () {
-    it('should not throw errors when getting and setting', function () {
+    it('supports the `on{close,error,message,open}` attributes', function () {
       const listener = () => {};
       const ws = new WebSocket('ws://localhost', { agent: new CustomAgent() });
 
@@ -1434,65 +1468,29 @@ describe('WebSocket', function () {
       ws.onclose = listener;
       ws.onopen = listener;
 
-      assert.strictEqual(ws.binaryType, 'nodebuffer');
-      ws.binaryType = 'arraybuffer';
-      assert.strictEqual(ws.binaryType, 'arraybuffer');
-      ws.binaryType = 'nodebuffer';
-      assert.strictEqual(ws.binaryType, 'nodebuffer');
-
       assert.strictEqual(ws.onmessage, listener);
       assert.strictEqual(ws.onclose, listener);
       assert.strictEqual(ws.onerror, listener);
       assert.strictEqual(ws.onopen, listener);
     });
 
-    it('should ignore when setting an invalid binary type', function () {
-      const ws = new WebSocket('ws://localhost', { agent: new CustomAgent() });
-
-      ws.binaryType = 'nodebuffer';
-      assert.strictEqual(ws.binaryType, 'nodebuffer');
-      ws.binaryType = 'foo';
-      assert.strictEqual(ws.binaryType, 'nodebuffer');
-      ws.binaryType = 'arraybuffer';
-      assert.strictEqual(ws.binaryType, 'arraybuffer');
-      ws.binaryType = '';
-      assert.strictEqual(ws.binaryType, 'arraybuffer');
-      ws.binaryType = 'fragments';
-      assert.strictEqual(ws.binaryType, 'fragments');
-      ws.binaryType = 'buffer';
-      assert.strictEqual(ws.binaryType, 'fragments');
-      ws.binaryType = 'nodebuffer';
-      assert.strictEqual(ws.binaryType, 'nodebuffer');
-    });
-
-    it('should work the same as the EventEmitter api', function (done) {
-      const wss = new WebSocket.Server({
-        clientTracking: false,
-        port: 0
-      }, () => {
+    it('works like the `EventEmitter` interface', function (done) {
+      const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
-        let message = 0;
-        let close = 0;
-        let open = 0;
 
         ws.onmessage = (messageEvent) => {
           assert.strictEqual(messageEvent.data, 'foo');
-          ++message;
+          ws.onclose = (closeEvent) => {
+            assert.strictEqual(closeEvent.wasClean, true);
+            assert.strictEqual(closeEvent.code, 1005);
+            assert.strictEqual(closeEvent.reason, '');
+            wss.close(done);
+          };
           ws.close();
         };
 
-        ws.onopen = () => ++open;
-        ws.onclose = () => ++close;
-
-        ws.on('open', () => ws.send('foo'));
-
-        ws.on('close', () => {
-          assert.strictEqual(message, 1);
-          assert.strictEqual(open, 1);
-          assert.strictEqual(close, 1);
-          wss.close(done);
-        });
+        ws.onopen = () => ws.send('foo');
       });
 
       wss.on('connection', (ws) => {
@@ -1500,7 +1498,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('doesn\'t return event listeners added with `on`', function () {
+    it("doesn't return listeners added with `on`", function () {
       const listener = () => {};
       const ws = new WebSocket('ws://localhost', { agent: new CustomAgent() });
 
@@ -1510,7 +1508,7 @@ describe('WebSocket', function () {
       assert.strictEqual(ws.onopen, undefined);
     });
 
-    it('doesn\'t remove event listeners added with `on`', function () {
+    it("doesn't remove listeners added with `on`", function () {
       const listener = () => {};
       const ws = new WebSocket('ws://localhost', { agent: new CustomAgent() });
 
@@ -1532,7 +1530,7 @@ describe('WebSocket', function () {
       assert.strictEqual(listeners[1]._listener, listener);
     });
 
-    it('registers listeners for custom events with addEventListener', function () {
+    it('adds listeners for custom events with `addEventListener`', function () {
       const listener = () => {};
       const ws = new WebSocket('ws://localhost', { agent: new CustomAgent() });
 
@@ -1546,7 +1544,7 @@ describe('WebSocket', function () {
       assert.strictEqual(ws.listeners('bar').length, 0);
     });
 
-    it('removes event listeners added with addEventListener', function () {
+    it('supports the `removeEventListener` method', function () {
       const listener = () => {};
       const ws = new WebSocket('ws://localhost', { agent: new CustomAgent() });
 
@@ -1566,12 +1564,12 @@ describe('WebSocket', function () {
       ws.removeEventListener('open', listener);
       ws.removeEventListener('foo', listener);
 
-      assert.strictEqual(ws.listeners('message').length, 0);
-      assert.strictEqual(ws.listeners('open').length, 0);
-      assert.strictEqual(ws.listeners('foo').length, 0);
+      assert.strictEqual(ws.listenerCount('message'), 0);
+      assert.strictEqual(ws.listenerCount('open'), 0);
+      assert.strictEqual(ws.listenerCount('foo'), 0);
     });
 
-    it('should receive text data wrapped in a MessageEvent when using addEventListener', function (done) {
+    it('wraps text data in a `MessageEvent`', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -1588,7 +1586,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('should receive valid CloseEvent when server closes with code 1000', function (done) {
+    it('receives a `CloseEvent` when server closes (1000)', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -1601,10 +1599,10 @@ describe('WebSocket', function () {
         });
       });
 
-      wss.on('connection', (client) => client.close(1000));
+      wss.on('connection', (ws) => ws.close(1000));
     });
 
-    it('should receive valid CloseEvent when server closes with code 1001', function (done) {
+    it('receives a `CloseEvent` when server closes (4000)', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -1612,60 +1610,39 @@ describe('WebSocket', function () {
         ws.addEventListener('close', (closeEvent) => {
           assert.ok(closeEvent.wasClean);
           assert.strictEqual(closeEvent.reason, 'some daft reason');
-          assert.strictEqual(closeEvent.code, 1001);
+          assert.strictEqual(closeEvent.code, 4000);
           wss.close(done);
         });
       });
 
-      wss.on('connection', (client) => client.close(1001, 'some daft reason'));
+      wss.on('connection', (ws) => ws.close(4000, 'some daft reason'));
     });
 
-    it('should have target set on Events', function (done) {
+    it('sets `target` and `type` on events', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-
-        ws.addEventListener('open', (openEvent) => {
-          assert.strictEqual(openEvent.target, ws);
-        });
-        ws.addEventListener('message', (messageEvent) => {
-          assert.strictEqual(messageEvent.target, ws);
-          wss.close();
-        });
-        ws.addEventListener('close', (closeEvent) => {
-          assert.strictEqual(closeEvent.target, ws);
-          ws.emit('error', new Error('forced'));
-        });
-        ws.addEventListener('error', (errorEvent) => {
-          assert.strictEqual(errorEvent.message, 'forced');
-          assert.strictEqual(errorEvent.target, ws);
-
-          done();
-        });
-      });
-
-      wss.on('connection', (client) => client.send('hi'));
-    });
-
-    it('should have type set on Events', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
+        const err = new Error('forced');
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
 
         ws.addEventListener('open', (openEvent) => {
           assert.strictEqual(openEvent.type, 'open');
+          assert.strictEqual(openEvent.target, ws);
         });
         ws.addEventListener('message', (messageEvent) => {
           assert.strictEqual(messageEvent.type, 'message');
+          assert.strictEqual(messageEvent.target, ws);
           wss.close();
         });
         ws.addEventListener('close', (closeEvent) => {
           assert.strictEqual(closeEvent.type, 'close');
-          ws.emit('error', new Error('forced'));
+          assert.strictEqual(closeEvent.target, ws);
+          ws.emit('error', err);
         });
         ws.addEventListener('error', (errorEvent) => {
           assert.strictEqual(errorEvent.message, 'forced');
           assert.strictEqual(errorEvent.type, 'error');
+          assert.strictEqual(errorEvent.target, ws);
+          assert.strictEqual(errorEvent.error, err);
 
           done();
         });
@@ -1674,7 +1651,7 @@ describe('WebSocket', function () {
       wss.on('connection', (client) => client.send('hi'));
     });
 
-    it('should pass binary data as a Node.js Buffer by default', function (done) {
+    it('passes binary data as a Node.js `Buffer` by default', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -1688,23 +1665,7 @@ describe('WebSocket', function () {
       wss.on('connection', (ws) => ws.send(new Uint8Array(4096)));
     });
 
-    it('should pass an ArrayBuffer for event.data if binaryType = arraybuffer', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const port = wss._server.address().port;
-        const ws = new WebSocket(`ws://localhost:${port}`);
-
-        ws.binaryType = 'arraybuffer';
-
-        ws.onmessage = (evt) => {
-          assert.ok(evt.data instanceof ArrayBuffer);
-          wss.close(done);
-        };
-      });
-
-      wss.on('connection', (ws) => ws.send(new Uint8Array(4096)));
-    });
-
-    it('should ignore binaryType for text messages', function (done) {
+    it('ignores `binaryType` for text messages', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -1720,7 +1681,7 @@ describe('WebSocket', function () {
       wss.on('connection', (ws) => ws.send('foo'));
     });
 
-    it('should allow to update binaryType on the fly', function (done) {
+    it('allows to update `binaryType` on the fly', function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const port = wss._server.address().port;
         const ws = new WebSocket(`ws://localhost:${port}`);
@@ -1760,8 +1721,8 @@ describe('WebSocket', function () {
     });
   });
 
-  describe('ssl', function () {
-    it('can connect to secure websocket server', function (done) {
+  describe('SSL', function () {
+    it('connects to secure websocket server', function (done) {
       const server = https.createServer({
         cert: fs.readFileSync('test/fixtures/certificate.pem'),
         key: fs.readFileSync('test/fixtures/key.pem')
@@ -1780,7 +1741,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('can connect to secure websocket server with client side certificate', function (done) {
+    it('connects to secure websocket server with client side certificate', function (done) {
       const server = https.createServer({
         cert: fs.readFileSync('test/fixtures/certificate.pem'),
         ca: [fs.readFileSync('test/fixtures/ca1-cert.pem')],
@@ -1855,7 +1816,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('can send and receive very long binary data', function (done) {
+    it('can send a big binary message', function (done) {
       this.timeout(4000);
 
       const buf = crypto.randomBytes(5 * 1024 * 1024);
@@ -1885,7 +1846,36 @@ describe('WebSocket', function () {
     });
   });
 
-  describe('host and origin headers', function () {
+  describe('Request headers', function () {
+    it('adds the authorization header if userinfo is present', function (done) {
+      const agent = new CustomAgent();
+      const auth = 'test:testpass';
+
+      agent.addRequest = (req) => {
+        assert.strictEqual(
+          req._headers.authorization,
+          `Basic ${Buffer.from(auth).toString('base64')}`
+        );
+        done();
+      };
+
+      const ws = new WebSocket(`ws://${auth}@localhost`, { agent });
+    });
+
+    it('adds custom headers', function (done) {
+      const agent = new CustomAgent();
+
+      agent.addRequest = (req) => {
+        assert.strictEqual(req._headers.cookie, 'foo=bar');
+        done();
+      };
+
+      const ws = new WebSocket('ws://localhost', {
+        headers: { 'Cookie': 'foo=bar' },
+        agent
+      });
+    });
+
     it('includes the host header with port number', function (done) {
       const agent = new CustomAgent();
 
@@ -1895,49 +1885,6 @@ describe('WebSocket', function () {
       };
 
       const ws = new WebSocket('ws://localhost:1337', { agent });
-    });
-
-    it('lacks default origin header', function (done) {
-      const agent = new CustomAgent();
-
-      agent.addRequest = (req) => {
-        assert.strictEqual(req._headers.origin, undefined);
-        done();
-      };
-
-      const ws = new WebSocket('ws://localhost', { agent });
-    });
-
-    it('honors origin set in options (1/2)', function (done) {
-      const agent = new CustomAgent();
-
-      agent.addRequest = (req) => {
-        assert.strictEqual(req._headers.origin, 'https://example.com:8000');
-        done();
-      };
-
-      const ws = new WebSocket('ws://localhost', {
-        origin: 'https://example.com:8000',
-        agent
-      });
-    });
-
-    it('honors origin set in options (2/2)', function (done) {
-      const agent = new CustomAgent();
-
-      agent.addRequest = (req) => {
-        assert.strictEqual(
-          req._headers['sec-websocket-origin'],
-          'https://example.com:8000'
-        );
-        done();
-      };
-
-      const ws = new WebSocket('ws://localhost', {
-        origin: 'https://example.com:8000',
-        protocolVersion: 8,
-        agent
-      });
     });
 
     it('excludes default ports from host header', function () {
@@ -1962,76 +1909,103 @@ describe('WebSocket', function () {
         'localhost'
       ]);
     });
+
+    it("doesn't add the origin header by default", function (done) {
+      const agent = new CustomAgent();
+
+      agent.addRequest = (req) => {
+        assert.strictEqual(req._headers.origin, undefined);
+        done();
+      };
+
+      const ws = new WebSocket('ws://localhost', { agent });
+    });
+
+    it('honors the `origin` option (1/2)', function (done) {
+      const agent = new CustomAgent();
+
+      agent.addRequest = (req) => {
+        assert.strictEqual(req._headers.origin, 'https://example.com:8000');
+        done();
+      };
+
+      const ws = new WebSocket('ws://localhost', {
+        origin: 'https://example.com:8000',
+        agent
+      });
+    });
+
+    it('honors the `origin` option (2/2)', function (done) {
+      const agent = new CustomAgent();
+
+      agent.addRequest = (req) => {
+        assert.strictEqual(
+          req._headers['sec-websocket-origin'],
+          'https://example.com:8000'
+        );
+        done();
+      };
+
+      const ws = new WebSocket('ws://localhost', {
+        origin: 'https://example.com:8000',
+        protocolVersion: 8,
+        agent
+      });
+    });
   });
 
   describe('permessage-deflate', function () {
     it('is enabled by default', (done) => {
-      const server = http.createServer();
-      const wss = new WebSocket.Server({ server, perMessageDeflate: true });
+      const agent = new CustomAgent();
 
-      server.on('upgrade', (req, socket, head) => {
-        assert.ok(req.headers['sec-websocket-extensions'].includes('permessage-deflate'));
-      });
+      agent.addRequest = (req) => {
+        assert.strictEqual(
+          req._headers['sec-websocket-extensions'],
+          'permessage-deflate; client_max_window_bits'
+        );
+        done();
+      };
 
-      server.listen(0, () => {
-        const ws = new WebSocket(`ws://localhost:${server.address().port}`);
-
-        ws.on('open', () => {
-          assert.ok(ws.extensions['permessage-deflate']);
-          server.close(done);
-          wss.close();
-        });
-      });
+      const ws = new WebSocket('ws://localhost', { agent });
     });
 
     it('can be disabled', function (done) {
-      const server = http.createServer();
-      const wss = new WebSocket.Server({ server, perMessageDeflate: true });
+      const agent = new CustomAgent();
 
-      server.on('upgrade', (req, socket, head) => {
-        assert.strictEqual(req.headers['sec-websocket-extensions'], undefined);
-      });
+      agent.addRequest = (req) => {
+        assert.strictEqual(req._headers['sec-websocket-extensions'], undefined);
+        done();
+      };
 
-      server.listen(0, () => {
-        const ws = new WebSocket(`ws://localhost:${server.address().port}`, {
-          perMessageDeflate: false
-        });
-
-        ws.on('open', () => {
-          server.close(done);
-          wss.close();
-        });
+      const ws = new WebSocket('ws://localhost', {
+        perMessageDeflate: false,
+        agent
       });
     });
 
     it('can send extension parameters', function (done) {
-      const server = http.createServer();
-      const wss = new WebSocket.Server({ server, perMessageDeflate: true });
+      const agent = new CustomAgent();
 
-      server.on('upgrade', (req, socket, head) => {
-        const extensions = req.headers['sec-websocket-extensions'];
+      const value = 'permessage-deflate; server_no_context_takeover;' +
+        ' client_no_context_takeover; server_max_window_bits=10;' +
+        ' client_max_window_bits';
 
-        assert.ok(extensions.includes('permessage-deflate'));
-        assert.ok(extensions.includes('server_no_context_takeover'));
-        assert.ok(extensions.includes('client_no_context_takeover'));
-        assert.ok(extensions.includes('server_max_window_bits=10'));
-        assert.ok(extensions.includes('client_max_window_bits'));
-      });
+      agent.addRequest = (req) => {
+        assert.strictEqual(
+          req._headers['sec-websocket-extensions'],
+          value
+        );
+        done();
+      };
 
-      server.listen(0, () => {
-        const ws = new WebSocket(`ws://localhost:${server.address().port}`, {
-          perMessageDeflate: {
-            serverNoContextTakeover: true,
-            clientNoContextTakeover: true,
-            serverMaxWindowBits: 10,
-            clientMaxWindowBits: true
-          }
-        });
-
-        ws.on('open', () => {
-          server.close(done);
-          wss.close();
-        });
+      const ws = new WebSocket('ws://localhost', {
+        perMessageDeflate: {
+          clientNoContextTakeover: true,
+          serverNoContextTakeover: true,
+          clientMaxWindowBits: true,
+          serverMaxWindowBits: 10
+        },
+        agent
       });
     });
 
@@ -2057,7 +2031,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('can send and receive a typed array', function (done) {
+    it('can send and receive a `TypedArray`', function (done) {
       const array = new Float32Array(5);
 
       for (let i = 0; i < array.length; i++) {
@@ -2085,7 +2059,7 @@ describe('WebSocket', function () {
       });
     });
 
-    it('can send and receive ArrayBuffer', function (done) {
+    it('can send and receive an `ArrayBuffer`', function (done) {
       const array = new Float32Array(5);
 
       for (let i = 0; i < array.length; i++) {
@@ -2139,7 +2113,7 @@ describe('WebSocket', function () {
     });
 
     describe('#send', function () {
-      it('can set the compress option true when perMessageDeflate is disabled', function (done) {
+      it('ignores the `compress` option if the extension is disabled', function (done) {
         const wss = new WebSocket.Server({ port: 0 }, () => {
           const port = wss._server.address().port;
           const ws = new WebSocket(`ws://localhost:${port}`, {
@@ -2159,37 +2133,8 @@ describe('WebSocket', function () {
       });
     });
 
-    describe('#close', function () {
-      it('should not raise error callback, if any, if called during send data', function (done) {
-        const wss = new WebSocket.Server({
-          perMessageDeflate: { threshold: 0 },
-          port: 0
-        }, () => {
-          const port = wss._server.address().port;
-          const ws = new WebSocket(`ws://localhost:${port}`, {
-            perMessageDeflate: { threshold: 0 }
-          });
-
-          ws.on('open', () => {
-            ws.send('hi', (error) => assert.ifError(error));
-            ws.close();
-          });
-        });
-
-        wss.on('connection', (ws) => {
-          ws.on('message', (message) => {
-            assert.strictEqual(message, 'hi');
-            ws.on('close', (code) => {
-              assert.strictEqual(code, 1000);
-              wss.close(done);
-            });
-          });
-        });
-      });
-    });
-
     describe('#terminate', function () {
-      it('will raise error callback, if any, if called during send data', function (done) {
+      it('can be used while data is being compressed', function (done) {
         const wss = new WebSocket.Server({
           perMessageDeflate: { threshold: 0 },
           port: 0
@@ -2200,8 +2145,8 @@ describe('WebSocket', function () {
           });
 
           ws.on('open', () => {
-            ws.send('hi', (error) => {
-              assert.ok(error instanceof Error);
+            ws.send('hi', (err) => {
+              assert.ok(err instanceof Error);
               wss.close(done);
             });
             ws.terminate();
@@ -2209,7 +2154,7 @@ describe('WebSocket', function () {
         });
       });
 
-      it('can be used while data is being processed', function (done) {
+      it('can be used while data is being decompressed', function (done) {
         const wss = new WebSocket.Server({
           perMessageDeflate: true,
           port: 0
