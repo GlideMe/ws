@@ -2,20 +2,16 @@
 
 'use strict';
 
-const safeBuffer = require('safe-buffer');
 const assert = require('assert');
 const crypto = require('crypto');
 const https = require('https');
 const http = require('http');
 const dns = require('dns');
-const net = require('net');
 const fs = require('fs');
 const os = require('os');
 
 const constants = require('../lib/constants');
 const WebSocket = require('..');
-
-const Buffer = safeBuffer.Buffer;
 
 class CustomAgent extends http.Agent {
   addRequest () {}
@@ -393,6 +389,28 @@ describe('WebSocket', function () {
       });
     });
 
+    it('does not re-emit `net.Socket` errors', function (done) {
+      const wss = new WebSocket.Server({ port: 0 }, () => {
+        const ws = new WebSocket(`ws://localhost:${wss.address().port}`);
+
+        ws.on('open', () => {
+          ws._socket.on('error', (err) => {
+            assert.ok(err instanceof Error);
+            assert.ok(err.message.startsWith('write E'));
+            ws.on('close', (code, message) => {
+              assert.strictEqual(message, '');
+              assert.strictEqual(code, 1006);
+              wss.close(done);
+            });
+          });
+
+          for (const client of wss.clients) client.terminate();
+          ws.send('foo');
+          ws.send('bar');
+        });
+      });
+    });
+
     it("emits an 'upgrade' event", function (done) {
       const wss = new WebSocket.Server({ port: 0 }, () => {
         const ws = new WebSocket(`ws://localhost:${wss.address().port}`);
@@ -593,9 +611,10 @@ describe('WebSocket', function () {
     });
 
     it('fails if server sends a subprotocol when none was requested', function (done) {
-      const wss = new WebSocket.Server({
-        handleProtocols: () => 'foo',
-        server
+      const wss = new WebSocket.Server({ server });
+
+      wss.on('headers', (headers) => {
+        headers.push('Sec-WebSocket-Protocol: foo');
       });
 
       const ws = new WebSocket(`ws://localhost:${server.address().port}`);
@@ -1156,36 +1175,6 @@ describe('WebSocket', function () {
           );
 
           wss.close(done);
-        });
-      });
-    });
-
-    it('emits an error if the close frame can not be sent', function (done) {
-      const wss = new WebSocket.Server({ port: 0 }, () => {
-        const socket = net.createConnection(wss.address().port, () => {
-          socket.write(
-            'GET / HTTP/1.1\r\n' +
-            'Host: localhost\r\n' +
-            'Upgrade: websocket\r\n' +
-            'Connection: Upgrade\r\n' +
-            'Sec-WebSocket-Key: qqFVFwaCnSMXiqfezY/AZQ==\r\n' +
-            'Sec-WebSocket-Version: 13\r\n' +
-            '\r\n'
-          );
-          socket.destroy();
-        });
-
-        wss.on('connection', (ws) => {
-          ws.on('error', (err) => {
-            assert.ok(err instanceof Error);
-            assert.ok(err.message.startsWith('write E'));
-            ws.on('close', (code, message) => {
-              assert.strictEqual(message, '');
-              assert.strictEqual(code, 1006);
-              wss.close(done);
-            });
-          });
-          ws.close();
         });
       });
     });
