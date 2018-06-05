@@ -810,26 +810,6 @@ describe('Receiver', function () {
     });
   });
 
-  it('doesn\'t crash if data is received after `maxPayload` is exceeded', function (done) {
-    const p = new Receiver({}, 5);
-    const buf = crypto.randomBytes(10);
-
-    let gotError = false;
-
-    p.onerror = function (reason, code) {
-      gotError = true;
-      assert.strictEqual(code, 1009);
-    };
-
-    p.add(Buffer.from([0x82, buf.length]));
-
-    assert.ok(gotError);
-    assert.strictEqual(p.onerror, null);
-
-    p.add(buf);
-    done();
-  });
-
   it('consumes all data before calling `cleanup` callback (1/4)', function (done) {
     const perMessageDeflate = new PerMessageDeflate();
     perMessageDeflate.accept([{}]);

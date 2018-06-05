@@ -71,8 +71,10 @@ provided then that is extension parameters:
   takeover.
 - `serverMaxWindowBits` {Number} The value of `windowBits`.
 - `clientMaxWindowBits` {Number} Request a custom client window size.
-- `level` {Number} The value of zlib's `level` param (0-9, default 8).
-- `memLevel` {Number} The value of zlib's `memLevel` param (1-9, default 8).
+- `zlibDeflateOptions` {Object} [Additional options][zlib-options] to pass to
+  zlib on deflate.
+- `zlibInflateOptions` {Object} [Additional options][zlib-options] to pass to
+  zlib on inflate.
 - `threshold` {Number} Payloads smaller than this will not be compressed.
   Defaults to 1024 bytes.
 - `concurrencyLimit` {Number} The number of concurrent calls to zlib.
@@ -123,6 +125,14 @@ Emitted when the underlying server has been bound.
 
 A set that stores all connected clients. Please note that this property is only
 added when the `clientTracking` is truthy.
+
+### server.address()
+
+Returns an object with `port`, `family`, and `address` properties specifying
+the bound address, the address family name, and port of the server as reported
+by the operating system if listening on an IP socket.
+If the server is listening on a pipe or UNIX domain socket, the name is
+returned as a string.
 
 ### server.close([callback])
 
@@ -328,7 +338,7 @@ a `CloseEvent` named "close".
 - {Function}
 
 An event listener to be called when an error occurs. The listener receives
-an `Error` instance.
+an `ErrorEvent` named "error".
 
 ### websocket.onmessage
 
@@ -412,3 +422,4 @@ The URL of the WebSocket server. Server clients don't have this attribute.
 
 [concurrency-limit]: https://github.com/websockets/ws/issues/1202
 [permessage-deflate]: https://tools.ietf.org/html/draft-ietf-hybi-permessage-compression-19
+[zlib-options]: https://nodejs.org/api/zlib.html#zlib_class_options
